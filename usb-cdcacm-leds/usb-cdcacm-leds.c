@@ -198,8 +198,8 @@ static const struct usb_config_descriptor config = {
 
 static const char *usb_strings[] = {
     "Tomu",
-    "CDC-ACM Demo",
-    "DEMO",
+    "CDC-ACM LEDs",
+    "LEDS",
 };
 
 /* This busywait loop is roughly accurate when running at 24 MHz. */
@@ -232,10 +232,6 @@ static enum usbd_request_return_codes cdcacm_control_request(usbd_device *usbd_d
     switch(req->bRequest) {
     case USB_CDC_REQ_SET_CONTROL_LINE_STATE: {
         g_usbd_is_connected = req->wValue & 1; /* Check RTS bit */
-        if (!g_usbd_is_connected) /* Note: GPIO polarity is inverted */
-            gpio_set(LED_GREEN_PORT, LED_GREEN_PIN);
-        else
-            gpio_clear(LED_GREEN_PORT, LED_GREEN_PIN);
         return USBD_REQ_HANDLED;
         }
     case USB_CDC_REQ_SET_LINE_CODING: 
@@ -254,13 +250,26 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 
     char buf[64];
     int len = usbd_ep_read_packet(usbd_dev, 0x01, buf, sizeof(buf));
+    int k;
+
+    for (k = 0; k < len; k++) {
+        switch (buf[k]) {
+        case 'r':
+            gpio_set(LED_RED_PORT, LED_RED_PIN);
+            break;
+        case 'R':
+            gpio_clear(LED_RED_PORT, LED_RED_PIN);
+            break;
+        case 'g':
+            gpio_set(LED_GREEN_PORT, LED_GREEN_PIN);
+            break;
+        case 'G':
+            gpio_clear(LED_GREEN_PORT, LED_GREEN_PIN);
+            break;
+        }
+    }
 
     if (len) {
-        if (buf[0] == '\r') {
-            buf[1] = '\n';
-            buf[2] = '\0';
-            len++;
-        }
         usbd_ep_write_packet(usbd_dev, 0x82, buf, len);
         buf[len] = 0;
     }
@@ -328,14 +337,10 @@ int main(void)
         if (line_was_connected != g_usbd_is_connected) {
             if (g_usbd_is_connected) {
                 udelay_busy(2000);
-                usb_puts("\r\nHello world!\r\n");
+                usb_puts("\r\n[tomu-cdcacm-leds]\r\n");
                 udelay_busy(2000);
             }
             line_was_connected = g_usbd_is_connected;
         }
-
-        usb_puts("toggling LED\n\r");            
-        gpio_toggle(LED_RED_PORT, LED_RED_PIN);  
-        udelay_busy(300000);
     }
 }

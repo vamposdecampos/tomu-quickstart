@@ -26,6 +26,8 @@ MEMORY
     ram (rwx)  : ORIGIN = 0x20000000, LENGTH = 0x2000
 }
 
+boot_token = ORIGIN(ram);
+
 SECTIONS {
 	.text : {
 		KEEP(SORT(*)(.vectors))
