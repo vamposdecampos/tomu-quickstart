@@ -44,8 +44,10 @@
 #include <stdio.h>
 #include <string.h>
 
-//#include "toboot.h"
-//TOBOOT_CONFIGURATION(0);
+#include <toboot.h>
+TOBOOT_CONFIGURATION(TOBOOT_CONFIG_FLAG_AUTORUN);
+
+__attribute__((section(".boot_token"))) extern struct toboot_runtime boot_token;
 
 /* Default AHB (core clock) frequency of Tomu board */
 #define AHB_FREQUENCY 14000000
@@ -265,6 +267,10 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
             break;
         case 'G':
             gpio_clear(LED_GREEN_PORT, LED_GREEN_PIN);
+            break;
+        case '_':
+            boot_token.magic = TOBOOT_FORCE_ENTRY_MAGIC;
+            scb_reset_system();
             break;
         }
     }
